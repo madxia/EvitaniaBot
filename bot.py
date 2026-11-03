@@ -90,7 +90,9 @@ async def start_research_timer(ctx, name, remaining_seconds):
     total_reduction_mins = perk * 30
     reduction_str = f"-{total_reduction_mins // 60}h {total_reduction_mins % 60}m" if total_reduction_mins >= 60 else f"-{total_reduction_mins}m"
 
-    target_local = target_time.astimezone()
+    # --- TIMEZONE FIX (Philippine Time / UTC+8) ---
+    pht = timezone(timedelta(hours=8))
+    target_local = target_time.astimezone(pht)
     time_str = target_local.strftime("%A, %B %d, %Y at %I:%M %p")
     rel_time = f"<t:{int(target_time.timestamp())}:R>"
 
