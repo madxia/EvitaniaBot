@@ -76,19 +76,26 @@ async def send_guild_roadmap(channel):
     embed.set_footer(text="Updated by Officers • Use !setplan to update goals")
     await channel.send(embed=embed)
 
-async def start_research_timer(ctx, name, remaining_seconds):
+async def start_research_timer(ctx, name, base_seconds):
     global research_state
     if research_state["timer_task"]:
         research_state["timer_task"].cancel()
 
-    target_time = datetime.now(timezone.utc) + timedelta(seconds=remaining_seconds)
-    research_state["name"] = name
-    research_state["target_time"] = target_time
-    research_state["helps_applied"] = 0
-
     perk = research_state["mins_per_help"]
     total_reduction_mins = perk * 30
+    reduction_seconds = total_reduction_mins * 60
+
+    # Subtract full 30 helps reduction from entered duration
+    final_seconds = max(0, base_seconds - reduction_seconds)
+
+    target_time = datetime.now(timezone.utc) + timedelta(seconds=final_seconds)
+    research_state["name"] = name
+    research_state["target_time"] = target_time
+    research_state["helps_applied"] = 30
+
     reduction_str = f"-{total_reduction_mins // 60}h {total_reduction_mins % 60}m" if total_reduction_mins >= 60 else f"-{total_reduction_mins}m"
+    base_time_str = format_timedelta(timedelta(seconds=base_seconds))
+    final_time_str = format_timedelta(timedelta(seconds=final_seconds))
 
     # --- TIMEZONE FIX (Philippine Time / UTC+8) ---
     pht = timezone(timedelta(hours=8))
@@ -101,7 +108,9 @@ async def start_research_timer(ctx, name, remaining_seconds):
         color=discord.Color.green()
     )
     embed.add_field(name="Project Name", value=f"`{name}`", inline=True)
-    embed.add_field(name="Help Cutdown Perk", value=f"`{perk}m / help` ({reduction_str} per 30 helps)", inline=True)
+    embed.add_field(name="Base Duration", value=f"`{base_time_str}`", inline=True)
+    embed.add_field(name="Help Cutdown Perk", value=f"`{perk}m / help` ({reduction_str} for 30 helps)", inline=True)
+    embed.add_field(name="Net Remaining Time", value=f"`{final_time_str}`", inline=False)
     embed.add_field(name="Estimated Completion", value=f"{time_str} ({rel_time})", inline=False)
     embed.add_field(name="🚨 Automated Pings", value="Scheduled for 10m, 5m, and 1m before completion!", inline=False)
 
@@ -199,8 +208,8 @@ async def help_command(ctx):
         color=discord.Color.blue()
     )
     embed_add_field.add_field(
-        name="!setresearch <\"Name\"> <RemainingTime> *(Officer Only)*",
-        value="Sets new research timer using remaining in-game time directly.\n*Examples:*\n• `!setresearch \"New Heights Lvl 6\" 4d 11h 24m`\n• `!setresearch \"Guild Growth Lvl 4\" 1d 8h`\n• `!setresearch \"Expanded Stock Lvl 1\" 48h`",
+        name="!setresearch <\"Name\"> <BaseDuration> *(Officer Only)*",
+        value="Sets a new research timer. Automatically subtracts 30 guild helps based on your perk level!\n*Examples:*\n• `!setresearch \"New Heights Lvl 6\" 4d 11h 24m`\n• `!setresearch \"Guild Growth Lvl 4\" 1d 8h`\n• `!setresearch \"Expanded Stock Lvl 1\" 48h`",
         inline=False
     )
     embed_add_field.add_field(
